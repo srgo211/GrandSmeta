@@ -6,52 +6,37 @@ namespace GrandSmeta.Extensions;
 
 public static class Converts
 {
-    public static decimal? ToDecimalIsNull(this string quantity)
-    {
-        if (String.IsNullOrEmpty(quantity)) return default(decimal);
-        if (String.IsNullOrWhiteSpace(quantity)) return default(decimal);
-
-
-
-        if (quantity.ToUpper().Contains("E"))
-        {
-            if (decimal.TryParse(quantity.Replace(",", "."), NumberStyles.Float, CultureInfo.InvariantCulture, out decimal f))
-            {
-                return f;
-            }
-            else
-            {
-                return default(decimal);
-            }
-        }
-        else
-        {
-            decimal.TryParse(quantity.Replace(".", ","), out decimal result);
-            return result;
-        }
-    }
-
+   
+    /// <summary>
+    /// Преобразует строку в decimal, учитывая экспоненциальную форму и культуру.
+    /// </summary>
+    /// <param name="quantity">Строка со значением.</param>
+    /// <returns>Преобразованное значение или 0 при ошибке.</returns>
     public static decimal ToDecimal(this string quantity)
     {
-        if (String.IsNullOrEmpty(quantity)) return default(decimal);
-        if (String.IsNullOrWhiteSpace(quantity)) return default(decimal);
+        if (string.IsNullOrWhiteSpace(quantity)) return default;
 
+        quantity = quantity.Trim();
 
-        if (quantity.ToUpper().Contains("E"))
+        // Обработка экспоненциальной записи (научной формы)
+        if (quantity.Contains('E', StringComparison.OrdinalIgnoreCase))
         {
-            if (decimal.TryParse(quantity.Replace(",", "."), NumberStyles.Float, CultureInfo.InvariantCulture, out decimal f))
+            if (decimal.TryParse(quantity.Replace(",", "."), NumberStyles.Float, CultureInfo.InvariantCulture, out var expResult))
             {
-                return f;
+                return expResult;
             }
-            return default(decimal);
 
+            return default;
         }
-        decimal.TryParse(quantity.Replace(".", ","), out decimal result);
-        return result;
 
+        // Стандартное преобразование (используем текущую культуру или настраиваемую)
+        if (decimal.TryParse(quantity, NumberStyles.Number, CultureInfo.InvariantCulture, out var result))
+        {
+            return result;
+        }
+
+        return default;
     }
-
-    public static decimal ToDecimal(this double quantity) => Convert.ToDecimal(quantity);
 
     public static double ToDouble(this string data)
     {
@@ -73,64 +58,7 @@ public static class Converts
 
         int.TryParse(quantity.Trim(), out int result);
         return result;
-    }
-
-    public static long ToLong(this string quantity)
-    {
-        if (String.IsNullOrWhiteSpace(quantity)) return default(long);
-
-        long.TryParse(quantity.Trim(), out long result);
-        return result;
-    }
-
-    public static bool ToBool(this string quantity)
-    {
-        if (String.IsNullOrWhiteSpace(quantity)) return false;
-
-        if (quantity.Trim() == "1" || quantity.Trim().ToLower() == "true") return true;
-        return false;
-    }
-
-    public static decimal ToDecimal(this XmlNode xmlNode, string namedItem)
-    {
-        if (xmlNode == null) return default(decimal);
-
-
-        XmlNode node = xmlNode.Attributes.GetNamedItem(namedItem);
-        if (node == null) return default(decimal);
-
-        decimal res = node.Value.ToDecimal();
-        return res;
-
-    }
-
-    public static int ToNumberXML(this XmlNode xmlNode)
-    {
-        XmlNode attrPositionNumber = xmlNode.Attributes.GetNamedItem("Number");
-        int numberXml = int.Parse(attrPositionNumber.Value);
-        //string globalId = numberXml.ToString();//Guid.NewGuid().ToString();
-        return numberXml;
-    }
-
-
-    /// <summary>
-    /// Получаем из текста числовое значение
-    /// </summary>
-    /// <param name="text">текст с числовым значением</param>
-    /// <returns></returns>
-    public static decimal ToDecimalFromText(this string text)
-    {
-        const string pattern = "[0-9]*[.,][0-9]+";
-
-        if (String.IsNullOrEmpty(text)) return default(decimal);
-        text = text.Replace(" ", "").Replace(" ", "");
-        string res = Regex.Match(text, pattern).ToString();
-
-        return res.ToDecimal();
-    }
-
-
-   
+    }   
 
 }
 
