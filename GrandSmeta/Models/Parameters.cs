@@ -60,7 +60,7 @@ public class Parameters
     /// <summary>Методика (2020,2022,2024)</summary>
     public string Mode2020Order { get; set; }
 
-    ICollection<CommonNK> CommonNK { get; set; }
-    ICollection<CommonPK> CommonPK { get; set; }
-    ICollection<Numbering> Numbering { get; set; }
+    public ICollection<CommonNK> CommonNK { get; set; }
+    public ICollection<CommonPK> CommonPK { get; set; }
+    public ICollection<Numbering> Numbering { get; set; }
 }

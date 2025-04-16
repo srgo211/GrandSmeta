@@ -2,5 +2,5 @@
 
 public class WorksList
 {
-    ICollection<Work> Work { get; set; }
+   public ICollection<Work> Work { get; set; }
 }
