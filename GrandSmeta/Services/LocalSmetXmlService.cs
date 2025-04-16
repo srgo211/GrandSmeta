@@ -1,4 +1,5 @@
-﻿using GrandSmeta.Extensions;
+﻿using GrandSmeta.CreatesXml;
+using GrandSmeta.Extensions;
 using GrandSmeta.Interfaces;
 using GrandSmeta.Models;
 using System.Text;
@@ -23,7 +24,7 @@ public class LocalSmetXmlService : ILocalSmetXmlService
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         Encoding encoding = Encoding.GetEncoding("windows-1254");
 
-        XmlReaderSettings settings = GetSettings();
+        XmlReaderSettings settings = GetSettingsReader();
 
         using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         using XmlReader reader = XmlReader.Create(stream, settings);
@@ -111,21 +112,47 @@ public class LocalSmetXmlService : ILocalSmetXmlService
         }
 
         return context.Document;
-    }
-
-   
+    }   
 
     public async Task SaveAsync(Document document, string filePath)
     {
-        throw new NotImplementedException();
+        var settings = GetSettingsWriter();
+        XmlWriter writer = XmlWriter.Create(filePath, settings);
+
+        try
+        {
+            await writer.WriteStartDocumentAsync();
+            //await writer.WriteProcessingInstructionAsync("xml", "version='1.0' encoding='windows-1251'");
+            await DataDocument.CreateDocumentAsync(writer, document);
+
+            await writer.WriteEndDocumentAsync();
+        }
+        finally
+        {
+            await writer?.FlushAsync();
+            writer?.Close();
+            writer?.Dispose();
+        }
+
     }
 
 
+      
 
-
+    private XmlWriterSettings GetSettingsWriter()
+    {
+        XmlWriterSettings settings = new XmlWriterSettings();
+        settings.Async = true;
+        settings.Indent = true;
+        settings.Encoding = Encoding.GetEncoding(1251);
+        settings.OmitXmlDeclaration = false;
+        settings.NewLineOnAttributes = false;
+        settings.ConformanceLevel = ConformanceLevel.Auto;
+        return settings;
+    }  
 
     #region Helpers LoadXml
-    private XmlReaderSettings GetSettings()
+    private XmlReaderSettings GetSettingsReader()
     {
         XmlReaderSettings settings = new XmlReaderSettings();
         settings.Async = true;

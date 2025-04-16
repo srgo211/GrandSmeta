@@ -37,7 +37,7 @@ public class Position : BaseFilds
     public string DBFlags { get; set; }
 
     /// <summary>признак подчиненной строки</summary>
-    string SlaveRow { get; set; }
+    public string SlaveRow { get; set; }
 
     /// <summary>Комментарий к позции</summary>
     public string Comment { get; set; }
