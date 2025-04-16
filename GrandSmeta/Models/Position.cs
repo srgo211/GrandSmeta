@@ -12,8 +12,6 @@ public class Position : BaseFilds
     public string PriceLevel { get; set; }
 
 
-
-
     /// <summary>Флаг "Расчитывать ПЗ как сумму статей" единичной стоимости позиции</summary>
     public string PzSync { get; set; }
 
@@ -82,6 +80,6 @@ public class Position : BaseFilds
     public WorksList WorksList { get; set; }
 
     /// <summary>Индивидуальные НР и СП для расчета в текущих ценах </summary>
-    CustomNPCurr CustomNPCurr { get; set; }
+    public CustomNPCurr CustomNPCurr { get; set; }
     public Quantity Quantitys { get; set; }
 }
