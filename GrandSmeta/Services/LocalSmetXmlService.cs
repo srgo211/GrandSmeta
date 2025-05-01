@@ -112,8 +112,14 @@ public class LocalSmetXmlService : ILocalSmetXmlService
         }
 
         return context.Document;
-    }   
+    }
 
+    /// <summary>
+    /// Сохраняет объектную модель сметы в XML-файл.
+    /// </summary>
+    /// <param name="document">Смета для сохранения.</param>
+    /// <param name="filePath">Путь к целевому файлу.</param>
+    /// <returns>Задача, представляющая операцию сохранения.</returns>
     public async Task SaveAsync(Document document, string filePath)
     {
         var settings = GetSettingsWriter();
