@@ -62,6 +62,7 @@ public static class Converts
 
     public static bool Matches(this ItogDataType value, ItogDataType filter)
     {
+        if(filter == ItogDataType.All) return true;
         var res = (filter & value) != 0;
         return res;
     }
@@ -69,6 +70,8 @@ public static class Converts
     
     public static bool Matches(this ItogScope value, ItogScope filter)
     {
+        if (filter == ItogScope.All) return true;
+
         var res = (filter & value) != 0;
         return res;
     }

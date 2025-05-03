@@ -135,7 +135,7 @@ public sealed class ItogExtractorService
 
             if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "ItogRes") isInsideItogRes = false;
 
-           if(scope.Matches(ItogScope.DocumentLevel)) SetContext(ItogScope.DocumentLevel, reader);
+           if (scope.Matches(ItogScope.DocumentLevel)) SetContext(ItogScope.DocumentLevel, reader);
            if (scope.Matches(ItogScope.ChapterLevel)) SetContext(ItogScope.ChapterLevel, reader);
            if (scope.Matches(ItogScope.PositionLevel)) SetContext(ItogScope.PositionLevel, reader);
 
@@ -162,20 +162,20 @@ public sealed class ItogExtractorService
             {
                 case ItogScope.DocumentLevel:
                     id = currentSysIdDoc;
-                    if (string.IsNullOrEmpty(id)) return;
+                    if (string.IsNullOrEmpty(id) || CurrentItogList?.Count == 0) return;
                     _context.ItogsByDocument[id] = new List<Itog>(CurrentItogList);
                     break;
 
 
                 case ItogScope.ChapterLevel:
                     id = currentSysIdChp;
-                    if (string.IsNullOrEmpty(id)) return;
+                    if (string.IsNullOrEmpty(id) || CurrentItogList?.Count == 0) return;
                     _context.ItogsByChapter[id] = new List<Itog>(CurrentItogList);
                     break;
 
                 case ItogScope.PositionLevel:
                     id = currentSysIdPos;
-                    if (string.IsNullOrEmpty(id)) return;
+                    if (string.IsNullOrEmpty(id) || CurrentItogList?.Count == 0) return;
                     _context.ItogsByPosition[id] = new List<Itog>(CurrentItogList);
                     break;
 
@@ -247,8 +247,7 @@ public sealed class ItogExtractorService
 
         var (maxDepth, nodes) = GetItogDepthAndAttributes(reader, 1);
         var itog = ParseItog(nodes, _filter);
-        if (itog != null)
-            CurrentItogList.Add(itog);
+        if (itog is not null) CurrentItogList.Add(itog);
     }
 
     private (int maxDepth, Queue<ItogNode> nodes) GetItogDepthAndAttributes(XmlReader reader, int depth)

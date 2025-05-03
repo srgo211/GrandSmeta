@@ -27,6 +27,10 @@ public class Itog
     public decimal? PZResult { get; set; }
     public decimal? EMResult { get; set; }
     public decimal? ZMResult { get; set; }
+    public decimal? OZResult { get; set; }
+    public decimal? MTResult { get; set; }
+    public decimal? TZResult { get; set; }
+    public decimal? TMResult { get; set; }
 
     /// <summary>
     /// Вложенные элементы <Itog>
