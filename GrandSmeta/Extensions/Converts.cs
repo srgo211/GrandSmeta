@@ -5,7 +5,7 @@ namespace GrandSmeta.Extensions;
 
 public static class Converts
 {
-   
+
     /// <summary>
     /// Преобразует строку в decimal, учитывая экспоненциальную форму и культуру.
     /// </summary>
@@ -17,22 +17,19 @@ public static class Converts
 
         quantity = quantity.Trim();
 
-        // Обработка экспоненциальной записи (научной формы)
+        // Обработка экспоненты
         if (quantity.Contains('E', StringComparison.OrdinalIgnoreCase))
-        {
-            if (decimal.TryParse(quantity.Replace(",", "."), NumberStyles.Float, CultureInfo.InvariantCulture, out var expResult))
-            {
-                return expResult;
-            }
+            quantity = quantity.Replace(",", ".");
 
-            return default;
-        }
+        // Попробуем с русской запятой
+        if (decimal.TryParse(quantity, NumberStyles.Any, CultureInfo.GetCultureInfo("ru-RU"), out var ruResult))
+            return ruResult;
 
-        // Стандартное преобразование (используем текущую культуру или настраиваемую)
-        if (decimal.TryParse(quantity, NumberStyles.Number, CultureInfo.InvariantCulture, out var result))
-        {
-            return result;
-        }
+        // Попробуем с точкой (InvarantCulture)
+        if (decimal.TryParse(quantity.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out var invResult))
+            return invResult;
+
+
 
         return default;
     }
