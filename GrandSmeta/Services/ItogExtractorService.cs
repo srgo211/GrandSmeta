@@ -1,13 +1,7 @@
 ﻿using GrandSmeta.Extensions;
 using GrandSmeta.Models.Itogs;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text;
 using System.Xml;
-using System.Xml.Linq;
-using System.Xml.Serialization;
 
 namespace GrandSmeta.Services;
 
@@ -99,12 +93,22 @@ public enum ItogDataType
 /// </summary>
 public sealed class ItogExtractorService
 {
-    public async Task<Dictionary<string, List<Itog>>> ExtractItogsAsync(string filePath, ItogScope scope, ItogDataType dataTypes = ItogDataType.All)
-    {
-        var context = new ParserContextItog();
+    private ParserContextItog _context = null!;
+    private ItogDataType _filter;
+    public string? currentSysIdDoc;
+    public string? currentSysIdChp;
+    public string? currentSysIdPos;
+    public bool isInsideItogRes;
+    public List<Itog> CurrentItogList { get; } = new();
 
+
+    public async Task<ParserContextItog> ExtractItogsAsync(string filePath, ItogScope scope, ItogDataType dataTypes = ItogDataType.All)
+    {
         if (!File.Exists(filePath))
             return new();
+
+        _context = new ();
+        _filter = dataTypes;
 
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         Encoding encoding = Encoding.GetEncoding("windows-1254");
@@ -120,164 +124,209 @@ public sealed class ItogExtractorService
         await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         using var reader = XmlReader.Create(stream, settings);
 
-        var handlers = GetElementHandlers(context, scope, dataTypes);
-
         while (await reader.ReadAsync())
         {
             if (reader.NodeType == XmlNodeType.Element)
             {
                 var name = reader.Name;
                 var attributes = reader.GetAtributes() ?? new();
-
-                if (handlers.TryGetValue(name, out var handler))
-                {
-                    handler(attributes, reader);
-                }
+                DispatchElement(name, attributes, reader);
             }
-            else if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "ItogRes")
-            {
-                if (context.CurrentSysId is { } id && context.CurrentItogList.Count > 0)
-                {
-                    context.ItogsBySysId[id] = new List<Itog>(context.CurrentItogList);
-                }
 
-                context.IsInsideItogRes = false;
-                context.CurrentItogList.Clear();
+            if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "ItogRes") isInsideItogRes = false;
+
+           if(scope.Matches(ItogScope.DocumentLevel)) SetContext(ItogScope.DocumentLevel, reader);
+           if (scope.Matches(ItogScope.ChapterLevel)) SetContext(ItogScope.ChapterLevel, reader);
+           if (scope.Matches(ItogScope.PositionLevel)) SetContext(ItogScope.PositionLevel, reader);
+
+
+        }
+
+        return _context;
+    }
+
+    void SetContext(ItogScope itogScope, XmlReader reader)
+    {
+        string id = default;
+        string scope = itogScope switch
+        {
+            ItogScope.DocumentLevel => "Document",
+            ItogScope.ChapterLevel => "Chapter",
+            ItogScope.PositionLevel => "Position",
+            _ => "Unknown"
+        };
+
+        if (reader.NodeType == XmlNodeType.EndElement && reader.Name == scope)
+        {
+            switch (itogScope)
+            {
+                case ItogScope.DocumentLevel:
+                    id = currentSysIdDoc;
+                    if (string.IsNullOrEmpty(id)) return;
+                    _context.ItogsByDocument[id] = new List<Itog>(CurrentItogList);
+                    break;
+
+
+                case ItogScope.ChapterLevel:
+                    id = currentSysIdChp;
+                    if (string.IsNullOrEmpty(id)) return;
+                    _context.ItogsByChapter[id] = new List<Itog>(CurrentItogList);
+                    break;
+
+                case ItogScope.PositionLevel:
+                    id = currentSysIdPos;
+                    if (string.IsNullOrEmpty(id)) return;
+                    _context.ItogsByPosition[id] = new List<Itog>(CurrentItogList);
+                    break;
+
+                default: return;
+            }
+
+            CurrentItogList.Clear();
+
+        }
+    }
+
+    // 💡 Централизованный диспетчер без делегатов
+    private void DispatchElement(string elementName, Dictionary<string, string> attributes, XmlReader reader)
+    {
+        switch (elementName)
+        {
+            case "Document":
+                HandleDocument(attributes);
+                break;
+
+            case "Chapter":
+                HandleChapter(attributes);
+                break;
+
+            case "Position":
+                HandlePosition(attributes);
+                break;
+
+            case "ItogRes":
+                HandleItogRes();
+                break;
+
+            case "Itog":
+                HandleItog(reader);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    private void HandleDocument(Dictionary<string, string> attr)
+    {
+        currentSysIdDoc = "Document";
+    }
+
+    private void HandleChapter(Dictionary<string, string> attr)
+    {
+        attr.TryGetValue("SysID", out var sysId);
+        currentSysIdChp = sysId;
+    }
+
+    private void HandlePosition(Dictionary<string, string> attr)
+    {
+        attr.TryGetValue("SysID", out var sysId);
+        currentSysIdPos = sysId;
+    }
+
+    private void HandleItogRes()
+    {
+        isInsideItogRes = true;
+        CurrentItogList.Clear();
+    }
+
+    private void HandleItog(XmlReader reader)
+    {
+        if (!isInsideItogRes)
+            return;
+
+        var (maxDepth, nodes) = GetItogDepthAndAttributes(reader, 1);
+        var itog = ParseItog(nodes, _filter);
+        if (itog != null)
+            CurrentItogList.Add(itog);
+    }
+
+    private (int maxDepth, Queue<ItogNode> nodes) GetItogDepthAndAttributes(XmlReader reader, int depth)
+    {
+        int maxSubDepth = depth;
+        Queue<ItogNode> result = new();
+
+        using var subtree = reader.ReadSubtree();
+        subtree.Read(); // Переход к корневому элементу поддерева
+
+        if (subtree.Name == "Itog")
+        {
+            var attributes = subtree.GetAtributes() ?? new();
+            result.Enqueue(new ItogNode(depth, attributes));
+        }
+
+        while (subtree.Read())
+        {
+            if (subtree.NodeType == XmlNodeType.Element && subtree.Name == "Itog")
+            {
+                var (childDepth, childNodes) = GetItogDepthAndAttributes(subtree, depth + 1);
+                maxSubDepth = Math.Max(maxSubDepth, childDepth);
+
+                foreach (var child in childNodes)
+                    result.Enqueue(child);
             }
         }
 
-        return context.ItogsBySysId;
-    }    
-
-    /// <summary>
-    /// Возвращает карту обработчиков XML-элементов, привязанных к логике парсинга.
-    /// </summary>
-    /// <param name="context">Контекст обработки документа.</param>
-    /// <returns>Словарь с именами XML-элементов и их обработчиками.</returns>
-    private Dictionary<string, Action<Dictionary<string, string>, XmlReader>> GetElementHandlers(ParserContextItog context, ItogScope scope, ItogDataType filter)
-    {
-        return new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Document"] = (attr, _) =>
-            {
-                if (scope.HasFlag(ItogScope.DocumentLevel))
-                {
-                    context.CurrentSysId = $"Document";
-                }
-            },
-
-
-            ["Chapter"] = (attr, _) =>
-            {
-                if (scope.HasFlag(ItogScope.ChapterLevel) && attr.TryGetValue("SysID", out var sysId))
-                {
-                    context.CurrentSysId = sysId;
-                }
-            },
-
-            ["Position"] = (attr, _) =>
-            {
-                if (scope.HasFlag(ItogScope.PositionLevel) && attr.TryGetValue("SysID", out var sysId))
-                    context.CurrentSysId = sysId;
-            },
-
-            ["ItogRes"] = (_, _) =>
-            {
-                context.IsInsideItogRes = true;
-                context.CurrentItogList.Clear();
-            },
-
-            ["Itog"] = (_, reader) =>
-            {
-                if (!context.IsInsideItogRes)
-                    return;
-
-                using var subtree = reader.ReadSubtree();
-                var element = XElement.Load(subtree);
-                var itog = ParseItogElement(element, filter);
-
-                if (itog != null)
-                    context.CurrentItogList.Add(itog);
-            }
-        };
+        return (maxSubDepth, result);
     }
 
-
-   
-
-    private static Itog? ParseItogElement(XElement element, ItogDataType filter)
+    private static Itog? ParseItog(Queue<ItogNode> nodes, ItogDataType filter)
     {
-        var itog = new Itog
+        Itog? root = null;
+        Stack<Itog> stack = new();
+        bool isFilter = false;
+
+        while (nodes.Count > 0)
         {
-            Caption = (string?)element.Attribute("Caption"),
-            DataType = (string?)element.Attribute("DataType"),
-            Status = (string?)element.Attribute("Status"),
+            var node = nodes.Dequeue();
+            if (node is null) continue;
 
-            PZ = (string?)element.Attribute("PZ"),
-            OZ = (string?)element.Attribute("OZ"),
-            EM = (string?)element.Attribute("EM"),
-            ZM = (string?)element.Attribute("ZM"),
-            MT = (string?)element.Attribute("MT"),
-            TZ = (string?)element.Attribute("TZ"),
-            TM = (string?)element.Attribute("TM"),
+            var itog = node.Attributes.CreateDataModel<Itog>();
+            if (itog is null) continue;
 
-            PZResult = (string?)element.Attribute("PZResult"),
-            EMResult = (string?)element.Attribute("EMResult"),
-            ZMResult = (string?)element.Attribute("ZMResult"),
+            bool isOnFilter = itog.DataType.Matches(filter);
 
-            Children = new List<Itog>()
-        };
+            if (isOnFilter) isFilter = true;
 
-        // Рекурсивно разбираем вложенные Itog
-        foreach (var childElement in element.Elements("Itog"))
-        {
-            var child = ParseItogElement(childElement, filter);
-            if (child != null)
+            while (stack.Count >= node.Depth)
+                stack.Pop();
+
+            if (stack.Count > 0)
             {
-                itog.Children.Add(child);
+                var parent = stack.Peek();
+                if(parent.DataType.Matches(filter)) isFilter = true;
+               
+                if(!isFilter) continue;
+
+                parent.Children ??= new();
+                parent.Children.Add(itog);
             }
+            else
+            {
+                root = itog;
+            }
+
+            stack.Push(itog);
         }
 
-        // Условие включения: если фильтр отключен или DataType подходит или есть дочерние
-        bool include =
-            filter == ItogDataType.All ||
-            (!string.IsNullOrWhiteSpace(itog.DataType) && MapDataType(itog.DataType).HasFlag(filter)) ||
-            itog.Children.Count > 0;
+        nodes.Clear();
+        nodes.TrimExcess();
 
-        return include ? itog : null;
+        return isFilter ? root : null;
     }
 
-    private static ItogDataType MapDataType(string raw)
-    {
-        return raw.Trim() switch
-        {
-            "ForOneCurr" => ItogDataType.ForOneCurr,
-            "TotalFo" => ItogDataType.TotalFo,
-            "Nacl" => ItogDataType.Nacl,
-            "Plan" => ItogDataType.Plan,
-            "TotalWithNP" => ItogDataType.TotalWithNP,
-            "CleanPrice" => ItogDataType.CleanPrice,
-            "NSummRoot" => ItogDataType.NSummRoot,
-            "NSummDet" => ItogDataType.NSummDet,
-            "PSummRoot" => ItogDataType.PSummRoot,
-            "PSummDet" => ItogDataType.PSummDet,
-            "ChapterTotal" => ItogDataType.ChapterTotal,
-            "VrGroup" => ItogDataType.VrGroup,
-            "NPGroup" => ItogDataType.NPGroup,
-            "GroupInitial" => ItogDataType.GroupInitial,
-            "OSGroup" => ItogDataType.OSGroup,
-            "OwnerMat Itog" => ItogDataType.OwnerMatItog,
-            "SmetaTotal" => ItogDataType.SmetaTotal,
-            _ => ItogDataType.None
-        };
-    }
+    
 }
 
-internal sealed class ParserContextItog
-{
-    public string? CurrentSysId { get; set; }
-    public bool IsInsideItogRes { get; set; } = false;
-    public List<Itog> CurrentItogList { get; } = new();
-    public Dictionary<string, List<Itog>> ItogsBySysId { get; } = new();
-}
+
 

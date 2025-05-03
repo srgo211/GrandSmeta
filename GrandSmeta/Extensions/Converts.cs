@@ -1,6 +1,5 @@
-﻿using System.Globalization;
-using System.Text.RegularExpressions;
-using System.Xml;
+﻿using GrandSmeta.Services;
+using System.Globalization;
 
 namespace GrandSmeta.Extensions;
 
@@ -58,7 +57,37 @@ public static class Converts
 
         int.TryParse(quantity.Trim(), out int result);
         return result;
-    }   
+    }
 
+
+    public static bool Matches(this ItogDataType value, ItogDataType filter)
+    {
+        var res = (filter & value) != 0;
+        return res;
+    }
+
+    
+    public static bool Matches(this ItogScope value, ItogScope filter)
+    {
+        var res = (filter & value) != 0;
+        return res;
+    }
+
+
+    public static string RemoveSpacesStackalloc(this string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+
+        Span<char> buffer = stackalloc char[50]; // фиксированный стек-буфер
+        int pos = 0;
+
+        foreach (char c in input)
+        {
+            if (c != ' ')
+                buffer[pos++] = c;
+        }
+
+        return new string(buffer.Slice(0, pos));
+    }
 }
 

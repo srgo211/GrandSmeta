@@ -1,28 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using GrandSmeta.Services;
 
 namespace GrandSmeta.Models.Itogs;
 
+internal record ItogNode(int Depth, Dictionary<string, string> Attributes);
 
-
-/// <summary>
-/// Корневой контейнер Itog
-/// </summary>
-public class ItogRoot
-{
-    public ItogRes? ItogRes { get; set; }
-}
-
-/// <summary>
-/// Контейнер итогов (ItogRes → список Itog)
-/// </summary>
-public class ItogRes
-{
-    public List<Itog> Items { get; set; } = [];
-}
 
 /// <summary>
 /// Элемент <Itog>, поддерживает вложенность и содержит числовые/текстовые поля
@@ -30,7 +11,7 @@ public class ItogRes
 public class Itog
 {
     public string? Caption { get; set; }
-    public string? DataType { get; set; }
+    public ItogDataType DataType { get; set; }
     public string? Status { get; set; }
 
     // Значения стоимости и объёмов
@@ -43,12 +24,19 @@ public class Itog
     public string? TM { get; set; }    // Трудозатраты (в чел.-днях)
 
     // Значения после применения коэффициентов
-    public string? PZResult { get; set; }
-    public string? EMResult { get; set; }
-    public string? ZMResult { get; set; }
+    public decimal? PZResult { get; set; }
+    public decimal? EMResult { get; set; }
+    public decimal? ZMResult { get; set; }
 
     /// <summary>
     /// Вложенные элементы <Itog>
     /// </summary>
     public List<Itog> Children { get; set; } = [];
+}
+
+public sealed class ParserContextItog
+{      
+    public Dictionary<string, List<Itog>> ItogsByPosition { get; } = new();
+    public Dictionary<string, List<Itog>> ItogsByChapter { get; } = new();
+    public Dictionary<string, List<Itog>> ItogsByDocument { get; } = new();
 }

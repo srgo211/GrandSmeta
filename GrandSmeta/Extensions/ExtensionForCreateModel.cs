@@ -35,19 +35,35 @@ public static class ExtensionForCreateModel
     {
         try
         {
-            object objValue = value;
-            if (type == typeof(string)) objValue = value;
-            if (type == typeof(int)) objValue = value.ToInt();
-            if (type == typeof(long)) objValue = value;
-            if (type == typeof(float)) objValue = value;
-            if (type == typeof(double)) objValue = value.ToDouble();
-            if (type == typeof(decimal)) objValue = value.ToDecimal();
-            if (type == typeof(DateTime)) objValue = Convert.ToDateTime(value);
-            if (type == typeof(Guid)) objValue = value;
-            if (type == typeof(DateTimeOffset)) objValue = value;
-            if (type == typeof(TimeSpan)) objValue = value;
+            if (type == typeof(string)) return value;
+            if (type == typeof(int)) return value.ToInt(); ;
+            if (type == typeof(long)) return long.Parse(value);
+            if (type == typeof(float)) return float.Parse(value);
+            if (type == typeof(double)) return value.ToDouble();
+            if (type == typeof(decimal)) return value.ToDecimal();
+            if (type == typeof(DateTime)) return DateTime.Parse(value);
+            if (type == typeof(Guid)) return Guid.Parse(value);
+            if (type == typeof(DateTimeOffset)) return DateTimeOffset.Parse(value);
+            if (type == typeof(TimeSpan)) return TimeSpan.Parse(value);
 
-            return objValue;
+            // Nullable<T> (например decimal?, int?, enum?)
+            Type? underlyingType = Nullable.GetUnderlyingType(type);
+            if (underlyingType != null)
+            {
+                // Пустая строка — это null
+                if (string.IsNullOrWhiteSpace(value)) return null;
+                return ConvertValue(value, underlyingType);
+            }
+
+            // Enum
+            if (type.IsEnum)
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+
+                    return Enum.Parse(type, value.RemoveSpacesStackalloc(), ignoreCase: true);
+            }
+
+            return null; // Неизвестный тип
         }
         catch
         {
