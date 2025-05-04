@@ -3,6 +3,33 @@
 /// <summary>Опции расчета коэффициента </summary>
 public class KoefficientsOptions
 {
+    public KoefficientsOptions()
+    {
+        
+    }
+
+    /// <summary>Получаем Опции расчета коэффициента</summary>
+    /// <param name="options">строка с опциями</param>
+    public KoefficientsOptions(string options)
+    {
+        if (String.IsNullOrWhiteSpace(options)) return;
+
+        if (options.Contains("InPos")) InPos = true;
+        if (options.Contains("Base")) Base = true;
+        if (options.Contains("Percent")) Percent = true;
+        if (options.Contains("Curr")) Curr = true;
+        if (options.Contains("PzAll")) PzAll = true;
+        if (options.Contains("EmAll")) EmAll = true;
+        if (options.Contains("MatQty")) MatQty = true;
+        if (options.Contains("EmQty")) EmQty = true;
+        if (options.Contains("OzpTz")) OzpTz = true;
+        if (options.Contains("ZpmTz")) ZpmTz = true;
+        if (options.Contains("SeparEm")) SeparEm = true;
+        if (options.Contains("Disabled")) Disabled = true;
+        if (options.Contains("HideFx")) HideFx = true;
+
+    }
+
 
     /// <summary>считать в единичной стоимости позиции</summary>
     public bool InPos { get; set; }

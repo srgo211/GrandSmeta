@@ -1,12 +1,11 @@
-﻿using System.Globalization;
-using System.Text.RegularExpressions;
-using System.Xml;
+﻿using GrandSmeta.Services;
+using System.Globalization;
 
 namespace GrandSmeta.Extensions;
 
 public static class Converts
 {
-   
+
     /// <summary>
     /// Преобразует строку в decimal, учитывая экспоненциальную форму и культуру.
     /// </summary>
@@ -18,22 +17,19 @@ public static class Converts
 
         quantity = quantity.Trim();
 
-        // Обработка экспоненциальной записи (научной формы)
+        // Обработка экспоненты
         if (quantity.Contains('E', StringComparison.OrdinalIgnoreCase))
-        {
-            if (decimal.TryParse(quantity.Replace(",", "."), NumberStyles.Float, CultureInfo.InvariantCulture, out var expResult))
-            {
-                return expResult;
-            }
+            quantity = quantity.Replace(",", ".");
 
-            return default;
-        }
+        // Попробуем с русской запятой
+        if (decimal.TryParse(quantity, NumberStyles.Any, CultureInfo.GetCultureInfo("ru-RU"), out var ruResult))
+            return ruResult;
 
-        // Стандартное преобразование (используем текущую культуру или настраиваемую)
-        if (decimal.TryParse(quantity, NumberStyles.Number, CultureInfo.InvariantCulture, out var result))
-        {
-            return result;
-        }
+        // Попробуем с точкой (InvarantCulture)
+        if (decimal.TryParse(quantity.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out var invResult))
+            return invResult;
+
+
 
         return default;
     }
@@ -58,7 +54,40 @@ public static class Converts
 
         int.TryParse(quantity.Trim(), out int result);
         return result;
-    }   
+    }
 
+
+    public static bool Matches(this ItogDataType value, ItogDataType filter)
+    {
+        if(filter == ItogDataType.All) return true;
+        var res = (filter & value) != 0;
+        return res;
+    }
+
+    
+    public static bool Matches(this ItogScope value, ItogScope filter)
+    {
+        if (filter == ItogScope.All) return true;
+
+        var res = (filter & value) != 0;
+        return res;
+    }
+
+
+    public static string RemoveSpacesStackalloc(this string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+
+        Span<char> buffer = stackalloc char[50]; // фиксированный стек-буфер
+        int pos = 0;
+
+        foreach (char c in input)
+        {
+            if (c != ' ')
+                buffer[pos++] = c;
+        }
+
+        return new string(buffer.Slice(0, pos));
+    }
 }
 
