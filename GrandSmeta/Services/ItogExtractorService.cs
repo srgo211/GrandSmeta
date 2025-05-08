@@ -82,6 +82,9 @@ public enum ItogDataType
     /// <summary>ВСЕГО по смете</summary>
     SmetaTotal = 1 << 16,
 
+    /// <summary>[Кастомный в оригинале нет его]Итог по Смр НР СП</summary>
+    SmrNrSp = 1 << 17,
+
     /// <summary>Все значения</summary>
     All = ~0
 }
